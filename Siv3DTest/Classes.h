@@ -1,0 +1,9 @@
+﻿#pragma once
+class Entity;
+class Unit;
+class PlayerUnit;
+class EnemyUnit;
+class Bullet;
+class PlayerBullet;
+class EnemyBullet;
+class EntityManager;

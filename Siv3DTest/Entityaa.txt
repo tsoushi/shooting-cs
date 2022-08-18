@@ -1,0 +1,211 @@
+﻿#pragma once
+class Entity;
+class Unit;
+class PlayerUnit;
+class EnemyUnit;
+class Bullet;
+class PlayerBullet;
+class EnemyBullet;
+class EntityManager;
+
+class Entity {
+public:
+	Entity(int x, int y);
+	Entity(int x, int y, int colWidth, int colHeight);
+	Entity(int x, int y, int colX, int colY, int colWidth, int colHeight);
+
+	double x;
+	double y;
+	virtual void move();
+	virtual void updateCordinate();
+	virtual int removeCheck();
+	virtual void remove();
+	virtual void hitCheck(EntityManager);
+	virtual void hit(Entity entity);
+	virtual void draw();
+
+	Rect realBody;
+};
+
+
+class Entity {
+public:
+	Entity(int x, int y) : x(x), y(y), realBody(Arg::center(x, y), 4, 4) {}
+	Entity(int x, int y, int colWidth, int colHeight) : x(x), y(y), realBody(Arg::center(x, y), colWidth, colHeight) {}
+	Entity(int x, int y, int colX, int colY, int colWidth, int colHeight) : x(x), y(y), realBody(x + colX, y + colY, colWidth, colHeight) {}
+
+	double x;
+	double y;
+	virtual void move() {}
+	virtual void updateCordinate();
+	virtual int removeCheck();
+	virtual void remove() {}
+	virtual void hitCheck(EntityManager);
+	virtual void hit(Entity entity) {}
+	virtual void draw() {}
+
+	Rect realBody;
+};
+void Entity::updateCordinate() {
+	realBody.x = x;
+	realBody.y = y;
+}
+int Entity::removeCheck() {
+	if (x < -30 || x > Scene::Width() + 30 || y < -30 || y > Scene::Height() + 30) {
+		return 1;
+	}
+	return 0;
+}
+
+class Unit : public Entity {
+	using Entity::Entity;
+protected:
+	int hp;
+public:
+	void attacked(int damage) {
+		hp -= damage;
+	}
+};
+
+class Bullet : public Entity {
+protected:
+	int power;
+};
+
+class EnemyUnit : public Unit {
+};
+
+class RealEnemyUnit : public EnemyUnit {
+
+};
+
+class EnemyBullet : public Bullet {
+public:
+	void hitCheck(EntityManager entityManager) override {
+		for (auto& player : entityManager.players) {
+			if (this->realBody.intersects(player.realBody)) {
+				hit(player);
+			}
+		}
+	}
+
+	virtual void hit(PlayerUnit player) {}
+};
+
+class PlayerUnit : public Unit {
+	using Unit::Unit;
+};
+
+class PlayerBullet : public Entity {
+public:
+	int power;
+	void hitCheck(EntityManager entityManager) override {
+		for (auto& enemy : entityManager.enemies) {
+			if (this->realBody.intersects(enemy.realBody)) {
+				hit(enemy);
+			}
+		}
+	}
+
+	virtual void hit(EnemyUnit enemy) {}
+};
+
+class EntityManager {
+public:
+	Array<EnemyUnit> enemies;
+	Array<PlayerUnit> players;
+	Array<EnemyBullet> enemyBullets;
+	Array<PlayerBullet> playerBullets;
+
+	void update();
+	void hit();
+	void draw();
+};
+
+void EntityManager::update() {
+	for (auto p = enemies.begin(); p != enemies.end(); p++) {
+		p->move();
+		p->updateCordinate();
+		if (p->removeCheck()) {
+			p->remove();
+			enemies.remove(*p);
+			p--;
+			continue;
+		}
+	}
+	for (auto p = enemyBullets.begin(); p != enemyBullets.end(); p++) {
+		p->move();
+		p->updateCordinate();
+		if (p->removeCheck()) {
+			p->remove();
+			enemyBullets.remove(*p);
+			p--;
+			continue;
+		}
+	}
+	for (auto p = players.begin(); p != players.end(); p++) {
+		p->move();
+		p->updateCordinate();
+		if (p->removeCheck()) {
+			p->remove();
+			players.remove(*p);
+			p--;
+			continue;
+		}
+	}
+	for (auto p = playerBullets.begin(); p != playerBullets.end(); p++) {
+		p->move();
+		p->updateCordinate();
+		if (p->removeCheck()) {
+			p->remove();
+			playerBullets.remove(*p);
+			p--;
+			continue;
+		}
+	}
+}
+
+void EntityManager::hit() {
+	//for (auto& enemy : enemies) {
+	//	enemy.hitCheck();
+	//}
+	for (auto& bullet : enemyBullets) {
+		bullet.hitCheck(*this);
+	}
+	//for (auto& player : players) {
+	//	player.hitCheck();
+	//}
+	for (auto& bullet : playerBullets) {
+		bullet.hitCheck(*this);
+	}
+}
+
+void EntityManager::draw() {
+	for (auto& enemy : enemies) {
+		enemy.draw();
+	}
+	for (auto& bullet : enemyBullets) {
+		bullet.draw();
+	}
+	for (auto& player : players) {
+		player.draw();
+	}
+	for (auto& bullet : playerBullets) {
+		bullet.draw();
+	}
+}
+
+
+EntityManager entityManager;
+
+class Player : public PlayerUnit {
+	using PlayerUnit::PlayerUnit;
+	void move();
+};
+void Player::move() {
+	int speed = 3;
+	if (KeyD.pressed()) x += speed;
+	if (KeyA.pressed()) x -= speed;
+	if (KeyS.pressed()) y += speed;
+	if (KeyW.pressed()) y -= speed;
+}
